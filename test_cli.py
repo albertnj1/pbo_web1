@@ -1,32 +1,40 @@
-from models.menu import Makanan, Minuman
-from models.pesanan import Pesanan
-from models.transaksi import Pembayaran, Laporan
+"""Demo alur lengkap tanpa web: jalankan dengan `python test_cli.py`."""
+from models import Makanan, Minuman, Penyimpanan
 
-print("--- MENJALANKAN TEST CLASS OOP KASIR ---")
+print("--- DEMO CLASS OOP KASIR ---")
 
-# 1. Buat Menu
-m1 = Makanan("M01", "Ayam Goreng Sambal", 18000, "Pedas")
-d1 = Minuman("D01", "Es Teh Manis", 4000, "Dingin")
-print(m1.tampilkan_info())
-print(d1.tampilkan_info())
+db = Penyimpanan()
+db.isi_data_awal()
 
-# 2. Buat Pesanan
-order1 = Pesanan("ORD-001", "Pelanggan 1")
-order1.tambah_item(m1, 2)  # 36.000
-order1.tambah_item(d1, 2)  # 8.000
-print(f"\nTotal Tagihan: Rp{order1.hitung_total():,.0f}")  # Harusnya 44.000
+# Polymorphism: satu perintah, hasil beda per subclass
+print("\n[Menu]")
+for m in db.daftar_menu():
+    print(" ", m.tampilkan_info())
 
-# 3. Proses Pembayaran
-bayar = Pembayaran("PAY-001", order1, "Cash", 50000)
-berhasil = bayar.proses_transaksi()
+# Login + role
+admin = db.login("admin", "admin123")
+kasir = db.login("kasir", "kasir123")
+print("\n[Role]")
+print(" ", admin.role_info())
+print(" ", kasir.role_info())
 
-if berhasil:
-    print(f"Status Pesanan : {order1.status}")
-    print(f"Uang Diterima  : Rp{bayar.jumlah_bayar:,.0f}")
-    print(f"Kembalian      : Rp{bayar.kembalian:,.0f}")
+# Admin kelola menu
+admin.tambah_menu(db, Minuman("D04", "Kopi Hitam", 5000, "Panas"))
+admin.ubah_harga_menu(db, "D04", 6000)
 
-# 4. Catat ke Laporan
-laporan = Laporan()
-laporan.catat_transaksi(bayar)
-print(f"Total Pendapatan di Laporan: Rp{laporan.hitung_total_pendapatan():,.0f}")
-print("\n--- SEMUA CLASS BERFUNGSI SEMPURNA! ---")
+# Kasir catat pesanan
+order = kasir.buat_pesanan(db, "Pelanggan 1")
+order.tambah_item(db.cari_menu("M01"), 2)   # 36.000
+order.tambah_item(db.cari_menu("D01"), 2)   # 8.000
+print(f"\n[Pesanan {order.id_pesanan}] Total: Rp{order.hitung_total():,.0f}  Status: {order.status}")
+
+# Pembayaran
+bayar = kasir.proses_pembayaran(db, order, "Cash", 50000)
+print(f"Metode: {bayar.metode.value} | Dibayar: Rp{bayar.jumlah_bayar:,.0f} | Kembalian: Rp{bayar.kembalian:,.0f}")
+print(f"Status sekarang: {order.status}")
+
+# Laporan
+print("\n[Laporan]")
+for kunci, nilai in admin.lihat_laporan(db).items():
+    print(f"  {kunci}: {nilai}")
+print("\n--- SELESAI ---")
